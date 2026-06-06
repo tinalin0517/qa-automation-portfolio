@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Test Assistant</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/tabler-icons.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="shell">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:14px">
+      <div class="brand" onclick="showHome()">
+        <div class="bmark"><svg viewBox="0 0 14 14" fill="none"><path d="M2 3.5h10M2 7h7M2 10.5h5" stroke="white" stroke-width="1.4" stroke-linecap="round"/></svg></div>
+        <span class="bname">AI Test Assistant</span>
+        <span class="bv">v2.0</span>
+      </div>
+      <div class="bc" id="bcArea" style="display:none">
+        <span class="bc-sep">/</span>
+        <span id="bcLabel" class="cur">Bug 分析助手</span>
+      </div>
+    </div>
+    <div class="top-r">
+      <button class="btn-teal" id="ctaBtn" onclick="showInput()">立即體驗 ↗</button>
+      <button class="btn-sm" id="backBtn" style="display:none">← 首頁</button>
+      <button class="btn-sm" id="copyBtn" style="display:none" onclick="copyReport()">複製報告</button>
+      <button class="btn-teal" id="exportBtn" style="display:none" onclick="downloadReport()">匯出報告 ↓</button>
+    </div>
+  </div>
+
+  <div id="loadingBar" class="loading-bar"></div>
+
+  <!-- 首頁 -->
+  <div class="page active" id="homePage">
+    <div class="home-hero">
+      <div class="hero-badge">
+        <svg width="8" height="8" viewBox="0 0 8 8" fill="#4ecb9a"><circle cx="4" cy="4" r="4"/></svg>
+        測試流程 AI 化
+      </div>
+      <h1>讓 AI 加速你的<br>軟體測試工作</h1>
+      <p>四大核心功能，從規格分析、Bug 診斷到測試案例優化，全方位提升 QA 效率。</p>
+      <div class="hero-actions">
+        <button class="btn-hero-primary" onclick="showInput()">立即體驗 ↗</button>
+        <button class="btn-hero-secondary">查看文件</button>
+      </div>
+    </div>
+
+    <div class="home-section">
+      <div class="home-section-label">四大核心功能</div>
+
+      <div class="tools-grid">
+        <div class="tool-card" onclick="selectTool(0)">
+          <div class="tool-icon icon-bug">🐛</div>
+          <div class="tool-name">Bug Analyzer</div>
+          <div class="tool-desc">智能分析缺陷根因，快速定位問題所在</div>
+          <span class="tool-tag tag-bug">缺陷分析</span>
+        </div>
+        <div class="tool-card" onclick="selectTool(1)">
+          <div class="tool-icon icon-spec">📋</div>
+          <div class="tool-name">Spec-Based Test Automation</div>
+          <div class="tool-desc">上傳規格文件，自動產出完整測試場景</div>
+          <span class="tool-tag tag-spec">規格轉測試</span>
+        </div>
+        <div class="tool-card" onclick="selectTool(2)">
+          <div class="tool-icon icon-dedup">🔍</div>
+          <div class="tool-name">Test Case Deduplicator</div>
+          <div class="tool-desc">識別並合併重複測項，精簡測試套件</div>
+          <span class="tool-tag tag-dedup">去重優化</span>
+        </div>
+        <div class="tool-card" onclick="selectTool(3)">
+          <div class="tool-icon icon-slim">✂️</div>
+          <div class="tool-name">Test Case Optimizer</div>
+          <div class="tool-desc">大量測項上傳或貼上，輸出精簡化測項</div>
+          <span class="tool-tag tag-slim">測項精簡</span>
+        </div>
+      </div>
+
+      <div class="preview-panel" id="previewPanel" style="display:none">
+        <div class="preview-header">
+          <span class="preview-title" id="previewTitle"></span>
+          <button class="preview-btn" id="previewAction" style="display:none" onclick="launchTool()">開啟工具 ↗</button>
+        </div>
+        <div id="previewContent"></div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">節省測試時間</div>
+          <div class="stat-value green">60%</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">測項覆蓋率</div>
+          <div class="stat-value green">↑ 38%</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">重複測項移除</div>
+          <div class="stat-value green">2.4x</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 輸入頁 -->
+  <div class="page" id="inputPage">
+    <div class="inp-page">
+      <div class="page-title">Bug 分析助手</div>
+      <div class="page-sub">輸入 EventId 查詢 log，Claude 幫你找出可能的錯誤原因與排查建議</div>
+
+      <div class="field">
+        <label class="field-label">EventId 或關鍵字搜尋</label>
+        <input class="field-input" id="keyword" placeholder="輸入 EventId（如：593）或關鍵字（如：payment error）...">
+      </div>
+
+      <div class="time-row">
+        <span class="time-label">時間範圍：</span>
+        <button class="time-btn" data-value="now-15m" onclick="setTime(this)">15 分鐘</button>
+        <button class="time-btn" data-value="now-1h" onclick="setTime(this)">1 小時</button>
+        <button class="time-btn" data-value="now-24h" onclick="setTime(this)">24 小時</button>
+        <button class="time-btn" data-value="now-7d" onclick="setTime(this)">7 天</button>
+        <button class="time-btn active" data-value="" onclick="setTime(this)">不限</button>
+      </div>
+
+      <div class="divider">
+        <div class="div-line"></div>
+        <span class="div-text">— 或手動貼上 log —</span>
+        <div class="div-line"></div>
+      </div>
+
+      <div class="field">
+        <label class="field-label">Error Log / API Response（選填）</label>
+        <textarea class="field-textarea" id="errorLog" placeholder='{"code":0,"errmsg":null,"data":[]}'></textarea>
+        <div class="field-hint">支援 JSON、stack trace、API response 等格式</div>
+      </div>
+
+      <div class="field">
+        <label class="field-label">補充說明（選填）</label>
+        <textarea class="field-textarea" id="context" style="min-height:72px" placeholder="可補充接口、環境、復現步驟等資訊…"></textarea>
+      </div>
+
+      <button class="submit-btn" id="submitBtn" onclick="analyze()">
+        <svg viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.2"/><path d="M5 7l1.5 1.5L9.5 5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        分析問題
+      </button>
+      <div class="error-banner" id="errorBanner"></div>
+    </div>
+  </div>
+
+  <!-- 結果頁 -->
+  <div class="page" id="outputPage">
+    <div class="out-header">
+      <div class="out-meta" id="outMeta"></div>
+      <div class="out-h" id="outTitle"></div>
+      <div class="out-sub" id="outSub"></div>
+    </div>
+
+    <div class="metrics" id="metricsRow"></div>
+
+    <div class="out-body">
+      <div class="log-section">
+        <div class="log-toggle" id="logToggle" onclick="toggleLog()">
+          <svg viewBox="0 0 12 12" fill="none"><path d="M4 2l4 4-4 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          OpenSearch 原始 Log（展開查看）
+        </div>
+        <div class="log-box" id="logBox"></div>
+      </div>
+
+      <div style="margin-bottom:18px">
+        <div class="section-label">問題核心</div>
+        <div class="core-block"><div class="core-title" id="rootCause"></div></div>
+        <div id="details"></div>
+      </div>
+
+      <div style="margin-bottom:18px">
+        <div class="section-label">解決方案</div>
+        <div id="solutions"></div>
+      </div>
+
+      <div>
+        <div class="section-label">建議</div>
+        <div class="suggest-block"><div class="suggest-text" id="recommendation"></div></div>
+      </div>
+
+      <div id="bugCodeRefs"></div>
+    </div>
+
+    <div class="out-footer">
+      <span class="foot-info" id="footInfo">分析模型：claude-sonnet-4-6</span>
+      <div class="foot-btns">
+        <button class="new-btn" onclick="showInput()">← 重新分析</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Spec-Based Test Automation 頁面 -->
+  <div class="page" id="specPage">
+    <div class="sp-steps">
+      <div class="sp-step active" id="sps1" onclick="spGoStep(1)">
+        <div class="sp-snum" id="spsn1">1</div>
+        <span class="sp-slabel">上傳 Spec</span>
+      </div>
+      <div class="sp-step-sep"></div>
+      <div class="sp-step" id="sps2" onclick="spGoStep(2)">
+        <div class="sp-snum" id="spsn2">2</div>
+        <span class="sp-slabel">設定產出規則</span>
+      </div>
+      <div class="sp-step-sep"></div>
+      <div class="sp-step" id="sps3" onclick="spGoStep(3)">
+        <div class="sp-snum" id="spsn3">3</div>
+        <span class="sp-slabel">產出測試場景</span>
+      </div>
+    </div>
+
+    <!-- Step 1: 上傳 Spec -->
+    <div class="sp-page active" id="spp1">
+      <div style="margin-bottom:16px">
+        <label class="sp-flabel"><i class="ti ti-upload" style="font-size:13px;vertical-align:-1px;margin-right:4px"></i>上傳規格文件</label>
+        <input type="file" id="spFileInput" style="display:none" accept=".docx,.pdf,.md,.txt,.yaml,.yml,.png,.jpg,.jpeg,.webp" multiple>
+        <div class="drop-zone" id="spDropZone" onclick="document.getElementById('spFileInput').click()">
+          <div class="dz-icon-wrap"><i class="ti ti-file-upload"></i></div>
+          <div class="dz-title">拖曳規格文件至此</div>
+          <div class="dz-hint">點擊選擇 · 拖曳 · 或按 <kbd style="font-size:10px;padding:1px 5px;border-radius:3px;background:var(--bg3);border:0.5px solid var(--b2);color:var(--t1)">⌘V</kbd> 貼上截圖</div>
+          <div class="fmt-pills">
+            <span class="fmt-pill">.docx</span>
+            <span class="fmt-pill">.pdf</span>
+            <span class="fmt-pill">.md</span>
+            <span class="fmt-pill">.txt</span>
+            <span class="fmt-pill">.yaml</span>
+            <span class="fmt-pill">.png / .jpg</span>
+          </div>
+        </div>
+        <div id="spFileList" style="display:none;margin-top:8px">
+          <!-- B: 全部清除按鈕列 -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <span id="spFileCount" style="font-size:11px;color:var(--t1)"></span>
+            <button onclick="spClearAll()" style="font-size:11px;color:var(--red-text);background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;gap:4px">
+              <i class="ti ti-trash" style="font-size:13px"></i>清除全部
+            </button>
+          </div>
+          <!-- A: 個別檔案列表 -->
+          <div id="spFileItems"></div>
+          <!-- C: 格式錯誤警告 -->
+          <div id="spFileWarn" style="display:none;margin-top:6px;padding:7px 10px;background:var(--amber-dim);border:0.5px solid var(--amber-text);border-radius:6px;font-size:11px;color:var(--amber-text)"></div>
+        </div>
+        <div class="sp-fhint">支援需求文件、User Story、API Spec、OpenAPI YAML</div>
+      </div>
+
+      <div class="sp-div">
+        <div class="sp-div-line"></div>
+        <span class="sp-div-text">或手動貼上規格內容</span>
+        <div class="sp-div-line"></div>
+      </div>
+
+      <div style="margin-bottom:16px">
+        <label class="sp-flabel">規格文字（選填）</label>
+        <textarea id="spSpecText" placeholder="貼上 User Story、AC 條件、API 說明…
+
+例如：
+As a user, I want to view my earn home page
+Given I am logged in
+When I call GET /capi/earn/home/show-entrance
+Then I should receive a list of available currencies"></textarea>
+        <div class="sp-fhint">可同時上傳檔案與補充文字說明</div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end">
+        <button style="font-size:13px;font-weight:500;padding:8px 20px;background:#085041;color:#fff;border:none;border-radius:8px;cursor:pointer" onclick="spGoStep(2)">下一步：設定規則 →</button>
+      </div>
+    </div>
+
+    <!-- Step 2: 設定產出規則 -->
+    <div class="sp-page" id="spp2">
+      <div style="margin-bottom:18px">
+        <label class="sp-flabel">測試場景類型</label>
+        <div class="cfg-grid">
+          <div class="cfg-card selected" onclick="spSelCard(this)">
+            <div class="cc-head">
+              <div class="cc-icon" style="background:var(--teal-dim)"><i class="ti ti-circle-check" style="color:var(--teal-text)"></i></div>
+              <span class="cc-name">Happy Path</span>
+            </div>
+            <div class="cc-desc">正常流程驗證，確認功能符合預期行為</div>
+          </div>
+          <div class="cfg-card selected" onclick="spSelCard(this)">
+            <div class="cc-head">
+              <div class="cc-icon" style="background:var(--red-dim)"><i class="ti ti-alert-triangle" style="color:var(--red-text)"></i></div>
+              <span class="cc-name">Edge Cases</span>
+            </div>
+            <div class="cc-desc">邊界值、極端輸入、空值與特殊字元</div>
+          </div>
+          <div class="cfg-card selected" onclick="spSelCard(this)">
+            <div class="cc-head">
+              <div class="cc-icon" style="background:var(--amber-dim)"><i class="ti ti-shield-off" style="color:var(--amber-text)"></i></div>
+              <span class="cc-name">Error Handling</span>
+            </div>
+            <div class="cc-desc">錯誤碼、例外回應、逾時與失敗場景</div>
+          </div>
+          <div class="cfg-card" onclick="spSelCard(this)">
+            <div class="cc-head">
+              <div class="cc-icon" style="background:var(--blue-dim)"><i class="ti ti-lock" style="color:var(--blue-text)"></i></div>
+              <span class="cc-name">Security</span>
+            </div>
+            <div class="cc-desc">權限驗證、注入攻擊、未授權存取</div>
+          </div>
+          <div class="cfg-card" onclick="spSelCard(this)">
+            <div class="cc-head">
+              <div class="cc-icon" style="background:var(--bg3)"><i class="ti ti-bolt" style="color:var(--t1)"></i></div>
+              <span class="cc-name">Performance</span>
+            </div>
+            <div class="cc-desc">回應時間、並發請求、大量資料壓測</div>
+          </div>
+          <div class="cfg-card" onclick="spSelCard(this)">
+            <div class="cc-head">
+              <div class="cc-icon" style="background:var(--bg3)"><i class="ti ti-refresh" style="color:var(--t1)"></i></div>
+              <span class="cc-name">Regression</span>
+            </div>
+            <div class="cc-desc">修復後迴歸驗證，防止舊 bug 復發</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:18px">
+        <label class="sp-flabel">進階選項</label>
+        <div style="border:0.5px solid var(--b1);border-radius:8px;padding:0 14px">
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="tl">產出 Gherkin BDD 格式</div>
+              <div class="td">Given / When / Then 結構，可直接匯入 Cucumber</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="spTBDD" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="tl">自動標注優先級（P1/P2/P3）</div>
+              <div class="td">依風險影響程度排序測試案例</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="spTPrio" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="tl">包含測試資料建議</div>
+              <div class="td">為每個測項提供示範輸入值與預期輸出</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="spTData"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px">
+        <label class="sp-flabel">輸出格式</label>
+        <div class="fmt-select-row">
+          <button class="fmt-sel-btn on" onclick="spTogFmt(this)">Markdown</button>
+          <button class="fmt-sel-btn" onclick="spTogFmt(this)">Excel / CSV</button>
+          <button class="fmt-sel-btn" onclick="spTogFmt(this)">Gherkin .feature</button>
+          <button class="fmt-sel-btn" onclick="spTogFmt(this)">JSON</button>
+          <button class="fmt-sel-btn" onclick="spTogFmt(this)">Jira</button>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <button class="btn-sm" onclick="spGoStep(1)">← 上一步</button>
+        <button id="spGenBtn" style="font-size:13px;font-weight:500;padding:8px 20px;background:#085041;color:#fff;border:none;border-radius:8px;cursor:pointer" onclick="spGenerateTests()">產出測試場景 ↗</button>
+      </div>
+    </div>
+
+    <!-- Step 3: 產出測試場景 -->
+    <div class="sp-page" id="spp3">
+      <div id="spStep3Loading" style="display:none;padding:32px 20px">
+        <div class="sp-prog-wrap">
+          <div class="sp-prog-title-main">AI 正在處理你的規格文件</div>
+          <div class="sp-prog-step active" id="spProg1">
+            <div class="sp-prog-icon">📄</div>
+            <div>
+              <div class="sp-prog-name">解析規格文件</div>
+              <div class="sp-prog-status" id="spProgS1">準備中…</div>
+            </div>
+          </div>
+          <div class="sp-prog-step" id="spProg2">
+            <div class="sp-prog-icon">🤖</div>
+            <div>
+              <div class="sp-prog-name">AI 分析規格內容</div>
+              <div class="sp-prog-status" id="spProgS2">等待中</div>
+            </div>
+          </div>
+          <div class="sp-prog-step" id="spProg3">
+            <div class="sp-prog-icon">✅</div>
+            <div>
+              <div class="sp-prog-name">產出測試場景</div>
+              <div class="sp-prog-status" id="spProgS3">等待中</div>
+            </div>
+          </div>
+          <div class="sp-prog-foot">預計需要 30～60 秒，請稍候</div>
+        </div>
+      </div>
+      <div id="spStep3Error" style="display:none;background:var(--red-dim);border:0.5px solid var(--red);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--red-text);margin-bottom:16px"></div>
+      <div id="spStep3Content">
+        <div class="sp-out-stats" id="spOutStats" style="display:none">
+          <div class="osc"><div class="osc-l">總場景數</div><div class="osc-v teal" id="spStatTotal">—</div></div>
+          <div class="osc"><div class="osc-l">P1 高優先</div><div class="osc-v" style="color:var(--red-text)" id="spStatP1">—</div></div>
+          <div class="osc"><div class="osc-l">涵蓋類型</div><div class="osc-v" id="spStatTypes">—</div></div>
+          <div class="osc"><div class="osc-l">解析行數</div><div class="osc-v" id="spStatSpecs">—</div></div>
+        </div>
+        <div id="spGroupsContainer"></div>
+        <div id="specCodeRefs"></div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+        <button class="btn-sm" onclick="spGoStep(2)">← 調整設定</button>
+        <div id="spExportBtns" style="display:none;gap:6px;align-items:center">
+          <button class="btn-sm" onclick="spExport()">匯出 .md ↓</button>
+          <button style="font-size:13px;font-weight:500;padding:8px 18px;background:#085041;color:#fff;border:none;border-radius:8px;cursor:pointer" onclick="spExportExcel()">匯出 .xlsx ↓</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sp-foot">
+      <span class="sp-foot-info" id="spFootInfo">步驟 1 / 3 · 上傳規格文件</span>
+      <div class="sp-foot-r">
+        <button class="btn-sm">查看實作要點 ↗</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let selectedTimeRange = '';
+let pvTimeRange = '';
+let lastResult = null;
+let lastKeyword = '';
+let currentToolIdx = -1;
+
+const toolDefs = [
+  {
+    name: 'Bug Analyzer', action: '開始分析 ↗', live: true,
+    uploadText: '拖曳 Bug 報告或截圖至此', hint: '.txt / .log / .png / .pdf 支援',
+    placeholder: '貼上錯誤訊息、stack trace 或 Bug 描述…'
+  },
+  {
+    name: 'Spec-Based Test Automation', action: '產出測試場景 ↗', live: false,
+    uploadText: '拖曳規格文件至此', hint: '.docx / .pdf / .md 支援',
+    placeholder: '貼上需求規格、User Story 或 AC 描述…'
+  },
+  {
+    name: 'Test Case Deduplicator', action: '開始去重 ↗', live: false,
+    uploadText: '拖曳測試案例檔案至此', hint: '.xlsx / .csv / .txt 支援',
+    placeholder: '貼上測試案例清單…'
+  },
+  {
+    name: 'Test Case Optimizer', action: '精簡測項 ↗', live: false,
+    uploadText: '拖曳測試案例至此', hint: '.xlsx / .csv / .txt 支援',
+    placeholder: '貼上大量測項內容…'
+  }
+];
+
+function selectTool(idx) {
+  currentToolIdx = idx;
+  document.querySelectorAll('.tool-card').forEach((c, i) => c.classList.toggle('active', i === idx));
+
+  const panel = document.getElementById('previewPanel');
+  const titleEl = document.getElementById('previewTitle');
+  const actionBtn = document.getElementById('previewAction');
+  const contentEl = document.getElementById('previewContent');
+  const t = toolDefs[idx];
+
+  panel.style.display = '';
+  titleEl.textContent = t.name;
+
+  if (idx === 1) {
+    showSpec();
+    return;
+  }
+
+  if (idx === 0) {
+    showInput();
+    return;
+  }
+
+  if (false) {
+    pvTimeRange = '';
+    actionBtn.style.display = 'none';
+    contentEl.innerHTML = `
+      <div class="field">
+        <label class="field-label">EventId 或關鍵字搜尋</label>
+        <input class="field-input" id="pvKeyword" placeholder="輸入 EventId（如：593）或關鍵字（如：payment error）...">
+      </div>
+      <div class="time-row">
+        <span class="time-label">時間範圍：</span>
+        <button class="time-btn" data-pv="now-15m" onclick="setPvTime(this)">15 分鐘</button>
+        <button class="time-btn" data-pv="now-1h" onclick="setPvTime(this)">1 小時</button>
+        <button class="time-btn" data-pv="now-24h" onclick="setPvTime(this)">24 小時</button>
+        <button class="time-btn" data-pv="now-7d" onclick="setPvTime(this)">7 天</button>
+        <button class="time-btn active" data-pv="" onclick="setPvTime(this)">不限</button>
+      </div>
+      <div class="divider">
+        <div class="div-line"></div>
+        <span class="div-text">— 或手動貼上 log —</span>
+        <div class="div-line"></div>
+      </div>
+      <div class="field">
+        <label class="field-label">Error Log / API Response（選填）</label>
+        <textarea class="field-textarea" id="pvErrorLog" placeholder='{"code":0,"errmsg":null,"data":[]}'></textarea>
+        <div class="field-hint">支援 JSON、stack trace、API response 等格式</div>
+      </div>
+      <div class="field">
+        <label class="field-label">補充說明（選填）</label>
+        <textarea class="field-textarea" id="pvContext" style="min-height:72px" placeholder="可補充接口、環境、復現步驟等資訊…"></textarea>
+      </div>
+      <button class="submit-btn" id="pvSubmitBtn" onclick="analyzeFromPreview()" style="margin-top:4px">
+        <svg viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.2"/><path d="M5 7l1.5 1.5L9.5 5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        分析問題
+      </button>
+      <div class="error-banner" id="pvErrorBanner" style="display:none;margin-top:12px"></div>`;
+  } else {
+    actionBtn.style.display = '';
+    actionBtn.textContent = t.action;
+    actionBtn.disabled = true;
+    contentEl.innerHTML = `<div class="coming-soon">⏳ 此功能即將上線，敬請期待</div>`;
+  }
+}
+
+function setPvTime(btn) {
+  document.querySelectorAll('#previewContent .time-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  pvTimeRange = btn.dataset.pv;
+}
+
+function analyzeFromPreview() {
+  const kw = (document.getElementById('pvKeyword')?.value || '').trim();
+  const el = (document.getElementById('pvErrorLog')?.value || '').trim();
+  const ctx = (document.getElementById('pvContext')?.value || '').trim();
+  if (!kw && !el) {
+    const banner = document.getElementById('pvErrorBanner');
+    banner.textContent = '請輸入 EventId、關鍵字或貼上 error log';
+    banner.style.display = 'block';
+    return;
+  }
+  document.getElementById('keyword').value = kw;
+  document.getElementById('errorLog').value = el;
+  document.getElementById('context').value = ctx;
+  selectedTimeRange = pvTimeRange;
+  showInput();
+  analyze();
+}
+
+function launchTool() {
+  if (currentToolIdx === 0) analyzeFromPreview();
+}
+
+function showHome() {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('homePage').classList.add('active');
+  document.getElementById('bcArea').style.display = 'none';
+  document.getElementById('ctaBtn').style.display = '';
+  document.getElementById('backBtn').style.display = 'none';
+  document.getElementById('copyBtn').style.display = 'none';
+  document.getElementById('exportBtn').style.display = 'none';
+}
+
+function showInput() {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('inputPage').classList.add('active');
+  document.getElementById('bcArea').style.display = '';
+  document.getElementById('bcLabel').textContent = 'Bug 分析助手';
+  document.getElementById('ctaBtn').style.display = 'none';
+  const back = document.getElementById('backBtn');
+  back.style.display = '';
+  back.textContent = '← 首頁';
+  back.onclick = showHome;
+  document.getElementById('copyBtn').style.display = 'none';
+  document.getElementById('exportBtn').style.display = 'none';
+}
+
+function showOutput() {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('outputPage').classList.add('active');
+  document.getElementById('bcArea').style.display = '';
+  document.getElementById('bcLabel').textContent = '分析結果';
+  document.getElementById('ctaBtn').style.display = 'none';
+  const back = document.getElementById('backBtn');
+  back.style.display = '';
+  back.textContent = '← 重新分析';
+  back.onclick = showInput;
+  document.getElementById('copyBtn').style.display = '';
+  document.getElementById('exportBtn').style.display = '';
+}
+
+function setTime(btn) {
+  document.querySelectorAll('#inputPage .time-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedTimeRange = btn.dataset.value;
+}
+
+function toggleLog() {
+  document.getElementById('logBox').classList.toggle('visible');
+  document.getElementById('logToggle').classList.toggle('open');
+}
+
+function extractMetrics(rawLogs) {
+  try {
+    const logs = JSON.parse(rawLogs);
+    if (!logs.length) return null;
+    const msg = logs[0].message;
+    if (typeof msg === 'object') return msg;
+    for (const log of logs) {
+      const m = log.message;
+      if (typeof m === 'object' && (m.gatewayResponseCode || m.targetResponseCode)) return m;
+    }
+  } catch(e) {}
+  return null;
+}
+
+function renderMetrics(metrics) {
+  const row = document.getElementById('metricsRow');
+  if (!metrics) { row.style.display = 'none'; return; }
+  const code = metrics.gatewayResponseCode || metrics.targetResponseCode || '—';
+  const codeClass = code >= 500 ? 'red' : code >= 400 ? 'amber' : 'teal';
+  const time = metrics.costTime != null ? metrics.costTime + 'ms' : '—';
+  const method = metrics.requestMethod || '—';
+  const path = (metrics.targetPath || metrics.requestPath || '—').replace(/^\/capi\//, '/').substring(0, 28);
+  const success = metrics.isSuccess;
+  const successDisplay = success === true
+    ? (code >= 400 ? '<span class="mc-val amber" style="font-size:14px">矛盾</span>' : '<span class="mc-val teal" style="font-size:14px">true</span>')
+    : success === false ? '<span class="mc-val red" style="font-size:14px">false</span>'
+    : '<span class="mc-val">—</span>';
+  row.innerHTML = `
+    <div class="mc"><div class="mc-lbl">回應碼</div><div class="mc-val ${codeClass}">${code}</div><div class="mc-sub">HTTP status</div></div>
+    <div class="mc"><div class="mc-lbl">耗時</div><div class="mc-val">${time}</div><div class="mc-sub">costTime</div></div>
+    <div class="mc"><div class="mc-lbl">請求方法</div><div class="mc-val" style="font-size:14px">${method}</div><div class="mc-sub">${path}</div></div>
+    <div class="mc"><div class="mc-lbl">isSuccess</div>${successDisplay}<div class="mc-sub">response field</div></div>`;
+}
+
+function renderHeader(data, metrics, keyword) {
+  const now = new Date().toLocaleString('zh-TW', {hour12: false}).replace(/\//g, '-');
+  const eid = keyword ? keyword.substring(0, 8) + '...' + keyword.slice(-4) : '—';
+  const code = metrics ? (metrics.gatewayResponseCode || metrics.targetResponseCode) : null;
+  const service = metrics ? (metrics.pathRouterId || '') : '';
+  const meta = document.getElementById('outMeta');
+  meta.innerHTML = '';
+  if (code >= 500) meta.innerHTML += `<span class="out-badge badge-red">HTTP ${code}</span>`;
+  else if (code >= 400) meta.innerHTML += `<span class="out-badge badge-amber">HTTP ${code}</span>`;
+  meta.innerHTML += `<span class="out-time">${now}</span>`;
+  if (keyword) meta.innerHTML += `<span class="out-eid">${eid}</span>`;
+  document.getElementById('outTitle').textContent = data.rootCause;
+  document.getElementById('outSub').textContent = service ? `服務：${service}` : '';
+  document.getElementById('footInfo').textContent = `分析模型：claude-sonnet-4-6${keyword ? ' · EventId: ' + eid : ''}`;
+}
+
+async function analyze() {
+  const keyword = document.getElementById('keyword').value.trim();
+  const errorLog = document.getElementById('errorLog').value.trim();
+
+  if (!keyword && !errorLog) {
+    showError('請輸入 EventId、關鍵字或貼上 error log');
+    return;
+  }
+
+  const btn = document.getElementById('submitBtn');
+  const bar = document.getElementById('loadingBar');
+  btn.disabled = true;
+  document.getElementById('errorBanner').style.display = 'none';
+  bar.style.display = 'block';
+  bar.style.width = '40%';
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 90000);
+
+  try {
+    const res = await fetch('/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        keyword,
+        errorLog,
+        context: document.getElementById('context').value.trim(),
+        timeRange: selectedTimeRange
+      }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeout);
+    bar.style.width = '80%';
+    const data = await res.json();
+
+    if (data.error) { showError(data.error); return; }
+
+    lastResult = data;
+    lastKeyword = keyword;
+
+    document.getElementById('logBox').textContent = data.rawLogs || '（無 OpenSearch 資料）';
+
+    const metrics = data.rawLogs ? extractMetrics(data.rawLogs) : null;
+    renderMetrics(metrics);
+    renderHeader(data, metrics, keyword);
+
+    document.getElementById('rootCause').textContent = data.rootCause;
+
+    const detailDiv = document.getElementById('details');
+    detailDiv.innerHTML = '';
+    (data.details || []).forEach(p => {
+      const d = document.createElement('div');
+      d.className = 'core-desc';
+      d.textContent = p;
+      detailDiv.appendChild(d);
+    });
+
+    const solDiv = document.getElementById('solutions');
+    solDiv.innerHTML = '';
+    (data.solutions || data.suggestions || []).forEach((s, i) => {
+      solDiv.innerHTML += `<div class="solution-block">
+        <div class="solution-tag">方案 ${i + 1}${i === 0 ? ' · 優先' : ' · 補強'}</div>
+        <div class="solution-text">${escHtml(s)}</div>
+      </div>`;
+    });
+
+    document.getElementById('recommendation').textContent = data.recommendation || '';
+
+    renderCodeRefs(data.codeRefs || [], 'bugCodeRefs');
+
+    bar.style.width = '100%';
+    setTimeout(() => { bar.style.display = 'none'; bar.style.width = '0'; }, 400);
+    showOutput();
+
+  } catch(e) {
+    clearTimeout(timeout);
+    showError(e.name === 'AbortError' ? '請求逾時，請稍後再試' : '分析失敗，請稍後再試');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorBanner');
+  el.textContent = msg;
+  el.style.display = 'block';
+  document.getElementById('loadingBar').style.display = 'none';
+}
+
+function copyReport() {
+  if (!lastResult) return;
+  const lines = [
+    `【問題核心】\n${lastResult.rootCause}`,
+    ...(lastResult.details || []).map(d => d),
+    `\n【解決方案】`,
+    ...(lastResult.solutions || lastResult.suggestions || []).map((s, i) => `方案 ${i+1}：${s}`),
+    `\n【建議】\n${lastResult.recommendation || ''}`
+  ];
+  navigator.clipboard.writeText(lines.join('\n')).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '已複製 ✓';
+    setTimeout(() => btn.textContent = '複製報告', 2000);
+  });
+}
+
+function downloadReport() {
+  if (!lastResult) return;
+  const now = new Date().toLocaleString('zh-TW', {hour12: false}).replace(/\//g, '-').replace(/:/g, '-').replace(/\s/g, '_');
+  const eid = lastKeyword ? lastKeyword.substring(0, 16) : 'report';
+  const solList = lastResult.solutions || lastResult.suggestions || [];
+  const lines = [
+    `AI Bug 分析報告`,
+    `產生時間：${new Date().toLocaleString('zh-TW', {hour12: false})}`,
+    lastKeyword ? `EventId / 關鍵字：${lastKeyword}` : '',
+    `分析模型：claude-sonnet-4-6`,
+    '='.repeat(50),
+    '',
+    '【問題核心】',
+    lastResult.rootCause,
+    '',
+    '【錯誤說明】',
+    ...(lastResult.details || []).map(d => `• ${d}`),
+    '',
+    '【解決方案】',
+    ...solList.map((s, i) => `方案 ${i+1}：${s}`),
+    '',
+    '【建議】',
+    lastResult.recommendation || '',
+  ].filter(l => l !== undefined);
+
+  const blob = new Blob([lines.join('\n')], {type: 'text/plain;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `bug-report_${eid}_${now}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  const btn = document.getElementById('exportBtn');
+  btn.textContent = '已下載 ✓';
+  setTimeout(() => btn.textContent = '匯出報告 ↓', 2000);
+}
+
+function renderCodeRefs(codeRefs, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = '';
+
+  const hasRefs = Array.isArray(codeRefs) && codeRefs.length > 0;
+  const uid = containerId;
+  const bodyId  = uid + '-bd';
+  const arrowId = uid + '-arr';
+
+  // 覆蓋信心度：有 refs 就顯示（每個 ref 佔 25%，最高 95%）
+  const confidence = hasRefs ? Math.min(95, codeRefs.length * 22 + 10) : 0;
+
+  let inner = '';
+  if (hasRefs) {
+    inner = codeRefs.map((r, i) => {
+      const m   = (r.method || 'OTHER').toUpperCase();
+      const cls = {GET:'get',POST:'post',PUT:'put',DELETE:'delete'}[m] || 'other';
+      return `<div class="ref-row">
+        <div class="ref-n">${i+1}</div>
+        <div class="ref-info">
+          <div class="ref-file" title="${escHtml(r.file||'')}">${escHtml(r.file||'')}</div>
+          <div class="ref-ep">
+            <span class="ref-mth mth-${cls}">${m}</span>
+            <span class="ref-path">${escHtml(r.endpoint||'')}</span>
+          </div>
+          <div class="ref-rsn">${escHtml(r.reason||'')}</div>
+        </div>
+      </div>`;
+    }).join('') +
+    `<div class="cov-bar">
+      <div class="cov-lbl"><span>程式碼覆蓋信心度</span><span style="color:var(--teal-text);font-weight:500">${confidence}%</span></div>
+      <div class="cov-track"><div class="cov-fill" id="${uid}-fill" style="width:0%"></div></div>
+    </div>`;
+  } else {
+    inner = '<div class="crp-empty">此次分析未使用程式碼 context（log 與現有 Controller 無直接對應）</div>';
+  }
+
+  container.innerHTML = `<div class="crp-wrap">
+    <div class="crp-hd" onclick="(function(){
+      var b=document.getElementById('${bodyId}'),a=document.getElementById('${arrowId}');
+      var o=b.classList.toggle('open'); a.classList.toggle('open',o);
+      if(o){var f=document.getElementById('${uid}-fill');if(f)setTimeout(()=>f.style.width='${confidence}%',50);}
+    })()">
+      <div class="crp-left">
+        <div class="crp-ico"><i class="ti ti-code" aria-hidden="true"></i></div>
+        <span class="crp-ttl">程式碼依據（AI 實際參考的 Controller）</span>
+        ${hasRefs ? `<span class="crp-cnt">${codeRefs.length} 個檔案</span>` : ''}
+      </div>
+      <i class="ti ti-chevron-right crp-arr" id="${arrowId}" aria-hidden="true"></i>
+    </div>
+    <div class="crp-bd" id="${bodyId}">${inner}</div>
+  </div>`;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function showSpec() {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('specPage').classList.add('active');
+  document.getElementById('bcArea').style.display = '';
+  document.getElementById('bcLabel').textContent = 'Spec-Based Test Automation';
+  document.getElementById('ctaBtn').style.display = 'none';
+  const back = document.getElementById('backBtn');
+  back.style.display = '';
+  back.textContent = '← 首頁';
+  back.onclick = showHome;
+  document.getElementById('copyBtn').style.display = 'none';
+  document.getElementById('exportBtn').style.display = 'none';
+  spGoStep(1);
+  spInitDropZone();
+}
+
+const spFootTexts = ['步驟 1 / 3 · 上傳規格文件', '步驟 2 / 3 · 設定產出規則', '步驟 3 / 3 · 測試場景產出完成'];
+
+function spGoStep(n) {
+  [1, 2, 3].forEach(i => {
+    document.getElementById('spp' + i).classList.toggle('active', i === n);
+    const s = document.getElementById('sps' + i);
+    s.classList.remove('active', 'done');
+    if (i === n) s.classList.add('active');
+    if (i < n) s.classList.add('done');
+    const sn = document.getElementById('spsn' + i);
+    sn.innerHTML = i < n ? '<i class="ti ti-check" style="font-size:12px"></i>' : i;
+  });
+  document.getElementById('spFootInfo').textContent = spFootTexts[n - 1];
+}
+
+let spDropZoneReady = false;
+
+function spInitDropZone() {
+  if (spDropZoneReady) return;
+  spDropZoneReady = true;
+
+  const dz    = document.getElementById('spDropZone');
+  const input = document.getElementById('spFileInput');
+  const items = document.getElementById('spFileItems');
+
+  input.addEventListener('change', () => {
+    if (input.files && input.files.length) spHandleFiles(input.files);
+  });
+
+  dz.addEventListener('dragover', e => {
+    e.preventDefault();
+    dz.classList.add('drag-over');
+  });
+
+  dz.addEventListener('dragleave', e => {
+    if (!dz.contains(e.relatedTarget)) dz.classList.remove('drag-over');
+  });
+
+  dz.addEventListener('drop', e => {
+    e.preventDefault();
+    dz.classList.remove('drag-over');
+    if (e.dataTransfer.files.length) spHandleFiles(e.dataTransfer.files);
+  });
+
+  // 事件委派：點擊刪除按鈕時透過 data-idx 找到對應檔案
+  items.addEventListener('click', e => {
+    const btn = e.target.closest('[data-del]');
+    if (!btn) return;
+    const idx = parseInt(btn.dataset.del, 10);
+    spRemoveFile(idx);
+  });
+
+  // ⌘V 貼上：支援截圖與從 Finder 複製的檔案
+  document.addEventListener('paste', e => {
+    if (!document.getElementById('specPage').classList.contains('active')) return;
+    if (!document.getElementById('spp1').classList.contains('active')) return;
+    const clipItems = e.clipboardData?.items;
+    if (!clipItems) return;
+    const files = [];
+    for (const item of clipItems) {
+      if (item.kind !== 'file') continue;
+      const file = item.getAsFile();
+      if (!file) continue;
+      // 截圖沒有名稱，自動命名
+      if (!file.name || file.name === 'image.png') {
+        const ts  = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+        const ext = file.type.split('/')[1] || 'png';
+        files.push(new File([file], `screenshot_${ts}.${ext}`, { type: file.type }));
+      } else {
+        files.push(file);
+      }
+    }
+    if (files.length) {
+      e.preventDefault();
+      spHandleFiles(files);
+      // 閃爍提示 drop zone
+      dz.classList.add('drag-over');
+      setTimeout(() => dz.classList.remove('drag-over'), 600);
+    }
+  });
+}
+
+const spSelectedFiles = [];
+
+function spHandleFiles(fileList) {
+  const allowed = ['docx', 'pdf', 'md', 'txt', 'yaml', 'yml', 'png', 'jpg', 'jpeg', 'webp'];
+  const MAX_FILES = 10;
+  const rejected = [];
+  let overLimit = false;
+
+  Array.from(fileList).forEach(file => {
+    const ext = file.name.split('.').pop().toLowerCase();
+    // C: 收集不支援的格式
+    if (!allowed.includes(ext)) {
+      rejected.push(file.name);
+      return;
+    }
+    // 去重：同名同大小跳過
+    if (spSelectedFiles.some(f => f.name === file.name && f.size === file.size)) return;
+    // 數量上限
+    if (spSelectedFiles.length >= MAX_FILES) {
+      overLimit = true;
+      return;
+    }
+    spSelectedFiles.push(file);
+  });
+
+  spRenderFileList();
+
+  // 警告訊息
+  const warnEl = document.getElementById('spFileWarn');
+  const msgs = [];
+  if (overLimit) msgs.push(`最多上傳 ${MAX_FILES} 個檔案，部分檔案已略過`);
+  if (rejected.length) msgs.push(`格式不支援已略過：${rejected.map(n => `<b>${escHtml(n)}</b>`).join('、')}<br><span style="color:var(--t2)">支援格式：.docx / .pdf / .md / .txt / .yaml</span>`);
+
+  if (msgs.length) {
+    warnEl.style.display = '';
+    warnEl.innerHTML = `<i class="ti ti-alert-triangle" style="font-size:12px;vertical-align:-1px;margin-right:4px"></i>` + msgs.join('<br>');
+  } else {
+    warnEl.style.display = 'none';
+  }
+}
+
+function spRenderFileList() {
+  const typeMap = { docx:'Word 文件', pdf:'PDF 文件', md:'Markdown', txt:'文字檔', yaml:'YAML 文件', yml:'YAML 文件', png:'PNG 截圖', jpg:'JPEG 圖片', jpeg:'JPEG 圖片', webp:'WebP 圖片' };
+  const listEl  = document.getElementById('spFileList');
+  const itemsEl = document.getElementById('spFileItems');
+  const countEl = document.getElementById('spFileCount');
+
+  if (!spSelectedFiles.length) {
+    listEl.style.display = 'none';
+    itemsEl.innerHTML = '';
+    return;
+  }
+
+  listEl.style.display = 'block';
+
+  // B: 更新計數（含上限提示）
+  const atLimit = spSelectedFiles.length >= 10;
+  countEl.innerHTML = `已選 ${spSelectedFiles.length} 個檔案`
+    + (atLimit ? ` <span style="color:var(--amber-text)">（已達上限 10 個）</span>` : ` <span style="color:var(--t2)">/ 最多 10 個</span>`);
+
+  // A: 渲染每個檔案列，各有獨立刪除按鈕
+  itemsEl.innerHTML = spSelectedFiles.map((file, i) => {
+    const ext  = file.name.split('.').pop().toLowerCase();
+    const kb   = Math.round(file.size / 1024);
+    const size = kb >= 1024 ? (kb / 1024).toFixed(1) + ' MB' : kb + ' KB';
+    return `<div class="file-preview">
+      <div class="fp-icon"><i class="ti ti-file-text"></i></div>
+      <div style="flex:1;min-width:0">
+        <div class="fp-name">${escHtml(file.name)}</div>
+        <div class="fp-size">${size} · ${typeMap[ext] || '文件'}</div>
+      </div>
+      <button class="fp-del" data-del="${i}" title="移除此檔案">×</button>
+    </div>`;
+  }).join('');
+}
+
+// A: 個別刪除
+function spRemoveFile(idx) {
+  spSelectedFiles.splice(idx, 1);
+  document.getElementById('spFileInput').value = '';
+  // 若全部刪完，同時清除警告
+  if (!spSelectedFiles.length) {
+    const warnEl = document.getElementById('spFileWarn');
+    if (warnEl) warnEl.style.display = 'none';
+  }
+  spRenderFileList();
+}
+
+// B: 全部清除
+function spClearAll() {
+  spSelectedFiles.length = 0;
+  document.getElementById('spFileInput').value = '';
+  const warnEl = document.getElementById('spFileWarn');
+  if (warnEl) warnEl.style.display = 'none';
+  spRenderFileList();
+}
+
+function spSelCard(el) {
+  el.classList.toggle('selected');
+}
+
+function spTogFmt(btn) {
+  btn.classList.toggle('on');
+}
+
+function spTogGroup(head) {
+  const arrow = head.querySelector('.tcg-arrow');
+  const items = head.nextElementSibling;
+  arrow.classList.toggle('open');
+  items.classList.toggle('open');
+}
+
+function spTogSel(item) {
+  const chk = item.querySelector('.tc-chk');
+  chk.classList.toggle('checked');
+}
+
+async function spGenerateTests() {
+  const specText  = (document.getElementById('spSpecText')?.value || '').trim();
+  const hasFile   = spSelectedFiles.length > 0;
+
+  if (!hasFile && !specText) {
+    alert('請先上傳規格文件或貼上規格內容');
+    spGoStep(1);
+    return;
+  }
+
+  const selectedTypes = [...document.querySelectorAll('#spp2 .cfg-card.selected .cc-name')]
+    .map(el => el.textContent.trim());
+
+  const bdd = document.getElementById('spTBDD')?.checked ?? true;
+  const priority = document.getElementById('spTPrio')?.checked ?? true;
+  const testData = document.getElementById('spTData')?.checked ?? false;
+
+  const btn = document.getElementById('spGenBtn');
+  btn.disabled = true;
+  btn.textContent = '產出中…';
+
+  spGoStep(3);
+  document.getElementById('spStep3Loading').style.display = 'block';
+  document.getElementById('spStep3Error').style.display = 'none';
+  document.getElementById('spOutStats').style.display = 'none';
+  document.getElementById('spGroupsContainer').innerHTML = '';
+  document.getElementById('spExportBtns').style.display = 'none';
+  spStartProgress();
+
+  const form = new FormData();
+  form.append('specText', specText);
+  form.append('types', JSON.stringify(selectedTypes));
+  form.append('bdd', bdd);
+  form.append('priority', priority);
+  form.append('testData', testData);
+
+  try {
+    const res = await fetch('/spec-analyze', { method: 'POST', body: form });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    spRenderResults(data);
+  } catch (e) {
+    document.getElementById('spStep3Error').textContent = '產出失敗：' + e.message;
+    document.getElementById('spStep3Error').style.display = 'block';
+  } finally {
+    document.getElementById('spStep3Loading').style.display = 'none';
+    btn.disabled = false;
+    btn.textContent = '產出測試場景 ↗';
+  }
+}
+
+const spBadgeStyles = {
+  success: 'background:var(--teal-dim);color:var(--teal-text)',
+  warning: 'background:var(--amber-dim);color:var(--amber-text)',
+  danger:  'background:var(--red-dim);color:var(--red-text)',
+  info:    'background:var(--blue-dim);color:var(--blue-text)',
+  secondary: 'background:var(--bg3);color:var(--t1)',
+};
+
+let spLastData = null;
+let _spProgTimers = [];
+
+function spStartProgress() {
+  _spProgTimers.forEach(t => clearTimeout(t));
+  _spProgTimers = [];
+  const steps = [
+    { el: 'spProg1', st: 'spProgS1' },
+    { el: 'spProg2', st: 'spProgS2' },
+    { el: 'spProg3', st: 'spProgS3' },
+  ];
+  const activeTexts  = ['準備中…', '分析中…', '產出中…'];
+  const doneTexts    = ['解析完成 ✓', 'AI 分析完成 ✓', '產出完成 ✓'];
+
+  function activate(i) {
+    steps.forEach((s, j) => {
+      const el = document.getElementById(s.el);
+      const st = document.getElementById(s.st);
+      el.classList.toggle('active', j === i);
+      el.classList.toggle('done',   j < i);
+      if (j < i)      st.textContent = doneTexts[j];
+      else if (j === i) st.textContent = activeTexts[i];
+      else             st.textContent = '等待中';
+    });
+  }
+
+  activate(0);
+  _spProgTimers.push(setTimeout(() => activate(1), 4000));
+  _spProgTimers.push(setTimeout(() => activate(2), 10000));
+}
+
+function spRenderResults(data) {
+  spLastData = data;
+  const stats = data.stats || {};
+  document.getElementById('spStatTotal').textContent = stats.total ?? '—';
+  document.getElementById('spStatP1').textContent = stats.p1 ?? '—';
+  document.getElementById('spStatTypes').textContent = (stats.types ?? '—') + (stats.types ? ' 類' : '');
+  document.getElementById('spStatSpecs').textContent = (stats.specs ?? '—') + (stats.specs ? ' 行' : '');
+  document.getElementById('spOutStats').style.display = '';
+
+  const container = document.getElementById('spGroupsContainer');
+  container.innerHTML = '';
+  (data.groups || []).forEach(g => {
+    const badgeStyle = spBadgeStyles[g.badgeType] || spBadgeStyles.secondary;
+    const cases = (g.cases || []).map(c => {
+      const prioClass = c.priority === 'P1' ? 'p1' : c.priority === 'P2' ? 'p2' : 'p3';
+      const tags = (c.tags || []).map(t => `<span class="tc-tag">${escHtml(t)}</span>`).join('');
+      return `<div class="tc-item" onclick="spTogSel(this)">
+        <div class="tc-chk checked"><i class="ti ti-check"></i></div>
+        <div class="tc-body" style="flex:1">
+          <div class="tc-id">${escHtml(c.id)}</div>
+          <div class="tc-name">${escHtml(c.name)}</div>
+          <div class="tc-exp">${escHtml(c.exp)}</div>
+          <div class="tc-tags">${tags}</div>
+        </div>
+        <span class="prio ${prioClass}">${escHtml(c.priority)}</span>
+      </div>`;
+    }).join('');
+
+    container.innerHTML += `<div class="tc-group">
+      <div class="tcg-head" onclick="spTogGroup(this)">
+        <i class="ti ti-chevron-right tcg-arrow open" style="font-size:14px"></i>
+        <span class="tcg-name">${escHtml(g.name)}</span>
+        <span class="tcg-badge" style="${badgeStyle}">${escHtml(g.badgeLabel)}</span>
+        <span class="tcg-cnt">${(g.cases || []).length} 個場景</span>
+      </div>
+      <div class="tc-items open">${cases}</div>
+    </div>`;
+  });
+
+  document.getElementById('spExportBtns').style.display = 'flex';
+
+  renderCodeRefs(data.codeRefs || [], 'specCodeRefs');
+}
+
+async function spExportExcel() {
+  if (!spLastData) return;
+  const btn = event.currentTarget;
+  const orig = btn.textContent;
+  btn.textContent = '產出中…';
+  btn.disabled = true;
+  try {
+    const res = await fetch('/spec-export-excel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(spLastData)
+    });
+    if (!res.ok) throw new Error('匯出失敗');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'test-scenarios.xlsx';
+    a.click();
+    URL.revokeObjectURL(url);
+    btn.textContent = '已下載 ✓';
+    setTimeout(() => { btn.textContent = orig; }, 2000);
+  } catch (e) {
+    alert('Excel 匯出失敗：' + e.message);
+    btn.textContent = orig;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function spExport() {
+  if (!spLastData) return;
+  const lines = [];
+  (spLastData.groups || []).forEach(g => {
+    lines.push(`## ${g.name} （${g.badgeLabel}）\n`);
+    (g.cases || []).forEach(c => {
+      lines.push(`### [${c.priority}] ${c.id} ${c.name}`);
+      lines.push(c.exp);
+      if (c.tags?.length) lines.push('Tags: ' + c.tags.join(', '));
+      lines.push('');
+    });
+  });
+  const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'test-scenarios.md';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>

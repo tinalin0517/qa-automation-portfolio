@@ -1,0 +1,23 @@
+.env
+venv/
+__pycache__/
+*.pyc
+.claude/
+.agents/
+skills-lock.json
+.cookie_backup
+*.zip
+# local secrets / runtime files
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.log
+.DS_Store
+.pytest_cache/
+reports/
+allure-results/
+allure-report/
